@@ -24,18 +24,16 @@ addons:
 
 before_script:
   #- export CFLAGS="-g -O2 -Werror=pointer-arith -Werror=implicit-function-declaration"
-  - >
-    URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
-    export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
-    wget -c "http://download.geany.org/$URL"
-    tar xvf "geany-${APP_VERSION}.tar.gz"
+  - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
+  - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
+  - wget -c "http://download.geany.org/$URL"
+  - tar xvf "geany-${APP_VERSION}.tar.gz"
 
 script:
-  - >
-    ./configure --enable-gtk3=yes --enable-binreloc &&
-    make -j$(nproc)                     &&
-    make -j$(nproc) check               &&
-    make install;
+  - ./configure --enable-gtk3=yes --enable-binreloc
+  - make -j$(nproc)
+  - make -j$(nproc) check
+  - make install
 
 #after_success:
 #  - >
