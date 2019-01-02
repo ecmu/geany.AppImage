@@ -30,10 +30,12 @@ before_script:
   - tar xvf "geany-${VERSION}.tar.gz"
 
 script:
+  - pushd "geany-${VERSION}"
   - ./configure --enable-gtk3=yes --enable-binreloc
   - make -j$(nproc)
   - make -j$(nproc) check
   - make install
+  - popd
 
 #after_success:
 #  - >
