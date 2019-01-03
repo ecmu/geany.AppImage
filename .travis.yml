@@ -17,79 +17,40 @@ addons:
       - python-docutils
       - rst2pdf
       - python-lxml
- 
-#install:
-  # try not to install doxygen-latex because we don't need it and it's huge
-  #- sudo apt-get install -y --no-install-recommends doxygen
 
 before_script:
-  #- export CFLAGS="-g -O2 -Werror=pointer-arith -Werror=implicit-function-declaration"
-  - export APP=geany
+  - export APP=Geany
   - export LOWERAPP=${APP,,}
   - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
   - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - wget -c "http://download.geany.org/$URL"
-  - tar xvf "${APP}-${VERSION}.tar.gz"
+  - tar xf "${LOWERAPP}-*.tar.gz"
 
 script:
-  - pushd "geany-${VERSION}"
-  - ./configure --enable-gtk3=yes --enable-binreloc
+  - cd "${LOWERAPP}-*/"
+  - ./configure --enable-gtk3=yes --enable-binreloc --prefix=/usr
   - make -j$(nproc)
   - make -j$(nproc) check
-  - sudo make install
-  - popd
-
+  - make install DESTDIR=$(readlink -f appdir) ; find appdir/
+  - cp appdir/usr/share/icons/hicolor/scalable/apps/geany.svg appdir/ # Why is this needed?
+  - sed -i -e 's|Text;Editor|Text;Editor;|g' appdir/usr/share/applications/geany.desktop # FIXME
+  - sed -i -e 's|Keywords|X-Keywords|g' appdir/usr/share/applications/geany.desktop # FIXME
+  - wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
+  - chmod a+x linuxdeployqt-continuous-x86_64.AppImage
+  - unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
+  #- export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
+  - ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -appimage
+  
 after_success:
-  #- wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  #- bash upload.sh geany-"$ARCH".AppImage*
-  - wget -q https://github.com/AppImage/AppImages/raw/master/functions.sh
-  - source ./functions.sh
-  #=== copy the list of libraries that have to be excluded from the bundle
-  - export APPDIR="$(pwd)/${APP}.AppDir"
-  - (rm --recursive --force --verbose "${APPDIR}" && mkdir --parents --verbose "${APPDIR}/usr/bin") || exit 1
-  #- cp /sources/appimage-helper-scripts/excludelist "${APPROOT}"
-  #=== Copying GIMP executable and desktop file
-  - cp --archive --verbose /usr/local/bin/geany* "${APPDIR}/usr/bin" || exit 1
-  - cp --archive --verbose /usr/local/share/applications/${APP}* "${APPDIR}/usr/share/applications" || exit 1
-  #=== Copying GIMP icon
-  - pushd /usr/local/share/icons/hicolor
-  - for f in *; do
-  -   echo "f: \"$f\""
-  -   ls $f/apps/$LOWERAPP.png
-  -   if [ -e $f/apps/$LOWERAPP.png ]; then
-  -     mkdir -p "$APPDIR/usr/share/icons/hicolor/$f/apps" || exit 1
-  -     cp $f/apps/$LOWERAPP.png "$APPDIR/usr/share/icons/hicolor/$f/apps" || exit 1
-  -   fi
-  - done
-  - popd
-  #=== 
-  - pushd "${APPDIR}"
-  #Copy dependencies : Three runs to ensure we catch indirect ones
-  - copy_deps
-  - copy_deps
-  - copy_deps
-  #Remove unneeded libraries
-  - delete_blacklisted
-  #Put the gcc libraries in optional folders
-  #- copy_gcc_libs
-  #Copy the startup scripts
-  #- cp -a /sources/AppRun.sh "$APPDIR/AppRun" || exit 1
-  #- cp /sources/appimage-helper-scripts/apprun-helper.sh "$APPDIR/apprun-helper.sh" || exit 1
-  #Bundle the desktop file and application icon
-  - get_desktop || exit 1
-  - get_icon || exit 1
-  #Configure the desktop integration
-  - get_desktopintegration $LOWERAPP
-  - popd
-  #=== Building AppImage...
-  - rm -rf ../out
-  - export ARCH="x86_64"
-  - export NO_GLIBC_VERSION=true
-  #- export DOCKER_BUILD=true
-  - generate_type2_appimage || exit 1
-  - mkdir -p /sources/out
-  - cp -a --verbose ../out/*.AppImage /sources/out
-  #/${APP}-${VERSION}-${ARCH}.AppImage
+  - find appdir -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
+  - # curl --upload-file Geany*.AppImage https://transfer.sh/Geany-git.$(git rev-parse --short HEAD)-x86_64.AppImage
+  - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
+  - bash upload.sh "${APP}*.AppImage*"
+
+branches:
+  except:
+    - # Do not build tags that we create when we upload to GitHub Releases
+    - /^(?i:continuous)/
 
 #deploy:
 #  provider: releases
