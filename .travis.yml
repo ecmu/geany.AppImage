@@ -27,7 +27,7 @@ before_script:
 
 script:
   - cd geany-*/
-  - ./configure --enable-gtk3=yes --enable-binreloc --prefix=/usr
+  - ./configure --enable-gtk3=no --enable-binreloc --prefix=/usr
   - make -j$(nproc)
   - make -j$(nproc) check
   - make install DESTDIR=$(readlink -f appdir) ; find appdir/
