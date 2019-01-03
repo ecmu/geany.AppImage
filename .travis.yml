@@ -27,7 +27,7 @@ before_script:
   - tar xf ${LOWERAPP}-*.tar.gz
 
 script:
-  - cd "${LOWERAPP}-*/"
+  - cd ${LOWERAPP}-*/
   - ./configure --enable-gtk3=yes --enable-binreloc --prefix=/usr
   - make -j$(nproc)
   - make -j$(nproc) check
