@@ -24,7 +24,7 @@ before_script:
   - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
   - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - wget -c "http://download.geany.org/$URL"
-  - tar xf "${LOWERAPP}-*.tar.gz"
+  - tar xf ${LOWERAPP}-*.tar.gz
 
 script:
   - cd "${LOWERAPP}-*/"
