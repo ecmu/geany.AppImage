@@ -24,23 +24,31 @@ addons:
 
 before_script:
   #- export CFLAGS="-g -O2 -Werror=pointer-arith -Werror=implicit-function-declaration"
+  - export APP=geany
   - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
   - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - wget -c "http://download.geany.org/$URL"
-  - tar xvf "geany-${VERSION}.tar.gz"
+  - tar xvf "${APP}-${VERSION}.tar.gz"
 
 script:
   - pushd "geany-${VERSION}"
   - ./configure --enable-gtk3=yes --enable-binreloc
   - make -j$(nproc)
   - make -j$(nproc) check
-  - make install
+  - sudo make install
   - popd
 
-#after_success:
-#  - >
-#    wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-#    bash upload.sh geany-"$ARCH".AppImage*
+after_success:
+  #- wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
+  #- bash upload.sh geany-"$ARCH".AppImage*
+  - wget -q https://github.com/AppImage/AppImages/raw/master/functions.sh
+  - source ./functions.sh
+  # copy the list of libraries that have to be excluded from the bundle
+  - export APPDIR="$(pwd)/AppDir"
+  - (rm -rf "${APPDIR}" && mkdir -p "${APPDIR}/usr/bin") || exit 1
+  #- cp /sources/appimage-helper-scripts/excludelist "${APPROOT}"
+  - echo "Copying GIMP executable and desktop file"
+  - cp -a /usr/local/bin/geany* "$APPDIR/usr/bin" || exit 1
 
 #deploy:
 #  provider: releases
