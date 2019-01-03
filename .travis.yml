@@ -25,6 +25,7 @@ addons:
 before_script:
   #- export CFLAGS="-g -O2 -Werror=pointer-arith -Werror=implicit-function-declaration"
   - export APP=geany
+  - export LOWERAPP=${APP,,}
   - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
   - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - wget -c "http://download.geany.org/$URL"
@@ -43,12 +44,38 @@ after_success:
   #- bash upload.sh geany-"$ARCH".AppImage*
   - wget -q https://github.com/AppImage/AppImages/raw/master/functions.sh
   - source ./functions.sh
-  # copy the list of libraries that have to be excluded from the bundle
+  #=== copy the list of libraries that have to be excluded from the bundle
   - export APPDIR="$(pwd)/AppDir"
   - (rm -rf "${APPDIR}" && mkdir -p "${APPDIR}/usr/bin") || exit 1
   #- cp /sources/appimage-helper-scripts/excludelist "${APPROOT}"
-  - echo "Copying GIMP executable and desktop file"
+  #=== Copying GIMP executable and desktop file
   - cp -a /usr/local/bin/geany* "$APPDIR/usr/bin" || exit 1
+  #=== 
+  - pushd "${APPDIR}"
+  #Copy dependencies : Three runs to ensure we catch indirect ones
+  - copy_deps; copy_deps; copy_deps;
+  #Remove unneeded libraries
+  - delete_blacklisted
+  #Put the gcc libraries in optional folders
+  #- copy_gcc_libs
+  #Copy the startup scripts
+  #- cp -a /sources/AppRun.sh "$APPDIR/AppRun" || exit 1
+  #- cp /sources/appimage-helper-scripts/apprun-helper.sh "$APPDIR/apprun-helper.sh" || exit 1
+  #Bundle the desktop file and application icon
+  - get_desktop
+  - get_icon
+  #Configure the desktop integration
+  - get_desktopintegration $LOWERAPP
+  - popd
+  #=== Building AppImage...
+  - rm -rf ../out
+  - export ARCH="x86_64"
+  - export NO_GLIBC_VERSION=true
+  #- export DOCKER_BUILD=true
+  - generate_type2_appimage
+  - mkdir -p /sources/out
+  - cp -a --verbose ../out/*.AppImage /sources/out
+  #/${APP}-${VERSION}-${ARCH}.AppImage
 
 #deploy:
 #  provider: releases
