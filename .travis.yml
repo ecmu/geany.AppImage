@@ -45,7 +45,7 @@ after_success:
   - wget -q https://github.com/AppImage/AppImages/raw/master/functions.sh
   - source ./functions.sh
   #=== copy the list of libraries that have to be excluded from the bundle
-  - export APPDIR="$(pwd)/AppDir"
+  - export APPDIR="$(pwd)/${APP}.AppDir"
   - (rm -rf "${APPDIR}" && mkdir -p "${APPDIR}/usr/bin") || exit 1
   #- cp /sources/appimage-helper-scripts/excludelist "${APPROOT}"
   #=== Copying GIMP executable and desktop file
