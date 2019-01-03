@@ -46,14 +46,28 @@ after_success:
   - source ./functions.sh
   #=== copy the list of libraries that have to be excluded from the bundle
   - export APPDIR="$(pwd)/${APP}.AppDir"
-  - (rm -rf "${APPDIR}" && mkdir -p "${APPDIR}/usr/bin") || exit 1
+  - (rm --recursive --force --verbose "${APPDIR}" && mkdir --parents --verbose "${APPDIR}/usr/bin") || exit 1
   #- cp /sources/appimage-helper-scripts/excludelist "${APPROOT}"
   #=== Copying GIMP executable and desktop file
-  - cp -a /usr/local/bin/geany* "$APPDIR/usr/bin" || exit 1
+  - cp --archive --verbose /usr/local/bin/geany* "${APPDIR}/usr/bin" || exit 1
+  - cp --archive --verbose /usr/local/share/applications/${APP}* "${APPDIR}/usr/share/applications" || exit 1
+  #=== Copying GIMP icon
+  - pushd /usr/local/share/icons/hicolor
+  - for f in *; do
+  -   echo "f: \"$f\""
+  -   ls $f/apps/$LOWERAPP.png
+  -   if [ -e $f/apps/$LOWERAPP.png ]; then
+  -     mkdir -p "$APPDIR/usr/share/icons/hicolor/$f/apps" || exit 1
+  -     cp $f/apps/$LOWERAPP.png "$APPDIR/usr/share/icons/hicolor/$f/apps" || exit 1
+  -   fi
+  - done
+  - popd
   #=== 
   - pushd "${APPDIR}"
   #Copy dependencies : Three runs to ensure we catch indirect ones
-  - copy_deps; copy_deps; copy_deps;
+  - copy_deps
+  - copy_deps
+  - copy_deps
   #Remove unneeded libraries
   - delete_blacklisted
   #Put the gcc libraries in optional folders
@@ -62,8 +76,8 @@ after_success:
   #- cp -a /sources/AppRun.sh "$APPDIR/AppRun" || exit 1
   #- cp /sources/appimage-helper-scripts/apprun-helper.sh "$APPDIR/apprun-helper.sh" || exit 1
   #Bundle the desktop file and application icon
-  - get_desktop
-  - get_icon
+  - get_desktop || exit 1
+  - get_icon || exit 1
   #Configure the desktop integration
   - get_desktopintegration $LOWERAPP
   - popd
@@ -72,7 +86,7 @@ after_success:
   - export ARCH="x86_64"
   - export NO_GLIBC_VERSION=true
   #- export DOCKER_BUILD=true
-  - generate_type2_appimage
+  - generate_type2_appimage || exit 1
   - mkdir -p /sources/out
   - cp -a --verbose ../out/*.AppImage /sources/out
   #/${APP}-${VERSION}-${ARCH}.AppImage
