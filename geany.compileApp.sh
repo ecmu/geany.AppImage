@@ -14,8 +14,6 @@ URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.g
 wget -c "http://download.geany.org/$URL"
 tar xf geany-*.tar.gz
 
-export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
-
 #=== Compile
 
 cd geany-*/
