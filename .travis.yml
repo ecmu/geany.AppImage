@@ -13,22 +13,21 @@ addons:
     packages:
       - intltool
       - libtool
-      - libgtk-3-dev
+      - libgtk2.0-dev
       - python-docutils
       - rst2pdf
       - python-lxml
-
+ 
 before_script:
-  - export APP=Geany
-  - export LOWERAPP=${APP,,}
+
   - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
   - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - wget -c "http://download.geany.org/$URL"
-  - tar xf ${LOWERAPP}-*.tar.gz
+  - tar xf geany-*.tar.gz
 
 script:
-  - cd ${LOWERAPP}-*/
-  - ./configure --enable-gtk3=yes --enable-binreloc --prefix=/usr
+  - cd geany-*/
+  - ./configure --enable-gtk3=no --enable-binreloc --prefix=/usr
   - make -j$(nproc)
   - make -j$(nproc) check
   - make install DESTDIR=$(readlink -f appdir) ; find appdir/
@@ -38,24 +37,16 @@ script:
   - wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
   - chmod a+x linuxdeployqt-continuous-x86_64.AppImage
   - unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
-  #- export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
+  - export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
   - ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -appimage
-  
+
 after_success:
   - find appdir -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
   - # curl --upload-file Geany*.AppImage https://transfer.sh/Geany-git.$(git rev-parse --short HEAD)-x86_64.AppImage
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  - bash upload.sh ${APP}*.AppImage*
-
+  - bash upload.sh Geany*.AppImage*
+  
 branches:
   except:
     - # Do not build tags that we create when we upload to GitHub Releases
     - /^(?i:continuous)/
-
-#deploy:
-#  provider: releases
-#  api_key: $GITHUB_TOKEN
-#  file: "FILE TO UPLOAD"
-#  skip_cleanup: true
-#  on:
-#    tags: true
