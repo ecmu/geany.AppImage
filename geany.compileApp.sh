@@ -18,7 +18,7 @@ tar xf geany-*.tar.gz
 #=== Compile
 
 cd geany-*/
-./configure --enable-gtk3=no --enable-binreloc --prefix=/usr
+./autogen.sh --enable-gtk3=no --enable-binreloc --prefix=/usr
 make -j$(nproc)
 make -j$(nproc) check
 make install DESTDIR=${APPDIR}
