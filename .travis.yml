@@ -28,6 +28,7 @@ script:
   - bash ./geany.compileApp.sh
   - export VERSION=$(ls geany-*.tar.gz | sed -r 's/.*geany-(.*).tar.gz/\1/')
   - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${APPDIR}/usr/lib/pkgconfig
+  - export C_INCLUDE_PATH=$C_INCLUDE_PATH:${APPDIR}/usr/include/geany
   - bash ./geany.compilePlugins.sh
   #Build AppImage:
   - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
