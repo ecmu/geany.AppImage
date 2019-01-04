@@ -18,7 +18,8 @@ tar xf geany-plugins-*.tar.gz
 #=== Compile
 
 cd geany-plugins-*/
-NOCONFIGURE=1 ./autogen.sh
+#NOCONFIGURE=1 ./autogen.sh --enable-all-plugins
+./configure
 make -j$(nproc)
 make -j$(nproc) check
 make install DESTDIR=${APPDIR}
