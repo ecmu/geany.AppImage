@@ -19,30 +19,27 @@ addons:
       - python-lxml
  
 before_script:
-  - URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
-  - export VERSION=$(echo "$URL" | sed -r 's/.*geany-(.*).tar.gz/\1/')
-  - wget -c "http://download.geany.org/$URL"
-  - tar xf geany-*.tar.gz
   - export APP=Geany
   - export LOWERAPP=${APP,,}
+  - export APPDIR="$(pwd)/appdir" ; mkdir --parents ${APPDIR} ; find ${APPDIR}
 
 script:
-  - cd geany-*/
-  - ./configure --enable-gtk3=no --enable-binreloc --prefix=/usr
-  - make -j$(nproc)
-  - make -j$(nproc) check
-  - make install DESTDIR=$(readlink -f appdir) ; find appdir/
-  - cp appdir/usr/share/icons/hicolor/scalable/apps/geany.svg appdir/ # Why is this needed?
-  - sed -i -e 's|Text;Editor|Text;Editor;|g' appdir/usr/share/applications/geany.desktop # FIXME
-  - sed -i -e 's|Keywords|X-Keywords|g' appdir/usr/share/applications/geany.desktop # FIXME
+  - pwd
+  #Compile:
+  - bash ./geany.compileApp.sh
+  #- bash ./geany.compilePlugins.sh
+  #Build AppImage:
+  - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg appdir/ # Why is this needed?
+  - sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
+  - sed -i -e 's|Keywords|X-Keywords|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
   - wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
   - chmod a+x linuxdeployqt-continuous-x86_64.AppImage
   - unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
   #- export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
-  - ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -appimage
+  - ./linuxdeployqt-continuous-x86_64.AppImage ${APPDIR}/usr/share/applications/*.desktop -appimage
 
 after_success:
-  - find appdir -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
+  - find ${APPDIR} -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
   - # curl --upload-file Geany*.AppImage https://transfer.sh/Geany-git.$(git rev-parse --short HEAD)-x86_64.AppImage
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
   - bash upload.sh Geany*.AppImage*
