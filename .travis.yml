@@ -28,10 +28,9 @@ script:
   #Compile:
   - bash ./geany.compileApp.sh
   - export VERSION=$(ls geany-*.tar.gz | sed -r 's/.*geany-(.*).tar.gz/\1/')
-  - echo $VERSION
-  #- bash ./geany.compilePlugins.sh
+  - bash ./geany.compilePlugins.sh
   #Build AppImage:
-  - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg appdir/ # Why is this needed?
+  - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
   - sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
   - sed -i -e 's|Keywords|X-Keywords|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
   - wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
