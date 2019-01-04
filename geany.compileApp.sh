@@ -10,8 +10,9 @@
 
 #=== Get App source
 
-URL=$(wget --quiet "http://download.geany.org/" -O - | grep -e "geany-.*\.tar\.gz<" | tail -n 1 | cut -d '"' -f 2)
-wget -c "http://download.geany.org/$URL"
+URL=$(wget --quiet "https://github.com/geany/geany/releases" -O - | grep -e "geany/archive.*\.tar\.gz" | head -n 1 | cut -d '"' -f 2)
+FILENAME=$(echo $URL | cut -d '/' -f 5)
+wget --continue "https://github.com${URL}" --output-document="geany-${FILENAME}"
 tar xf geany-*.tar.gz
 
 #=== Compile
