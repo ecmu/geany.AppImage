@@ -6,7 +6,8 @@
 #APPDIR=$(readlink -f appdir)
 
 #set -x
-#set -e
+#Exists on errors :
+set -e
 
 #=== Get App source
 
