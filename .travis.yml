@@ -31,6 +31,7 @@ script:
   - export C_INCLUDE_PATH=$C_INCLUDE_PATH:${APPDIR}/usr/include/geany:${APPDIR}/usr/include/geany/scintilla:${APPDIR}/usr/include/geany/tagmanager
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/lib:${APPDIR}/usr/local/lib
   - bash ./geany.compilePlugins.sh
+  - find ${APPDIR} -name "libgeanypluginutils.so"
   #Build AppImage:
   - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
   - sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
