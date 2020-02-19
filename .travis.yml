@@ -17,7 +17,6 @@ addons:
       - python-docutils
       - rst2pdf
       - python-lxml
-      - subversion
  
 before_script:
   - export APP=Geany
