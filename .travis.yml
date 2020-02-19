@@ -17,6 +17,7 @@ addons:
       - python-docutils
       - rst2pdf
       - python-lxml
+      - subversion
  
 before_script:
   - export APP=Geany
@@ -31,6 +32,10 @@ script:
   - export C_INCLUDE_PATH=$C_INCLUDE_PATH:${APPDIR}/usr/include/geany:${APPDIR}/usr/include/geany/scintilla:${APPDIR}/usr/include/geany/tagmanager
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/lib:${APPDIR}/usr/local/lib
   - bash ./geany.compilePlugins.sh
+  #Include geany-themes:
+  - pushd ${APPDIR}/usr/share/geany
+  - svn export https://github.com/geany/geany-themes.git/trunk/colorschemes --force
+  - popd
   #Build AppImage:
   - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
   - sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
