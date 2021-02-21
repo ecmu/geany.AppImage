@@ -13,10 +13,9 @@ addons:
     packages:
       - intltool
       - libtool
-      - libgtk2.0-dev
       - python-docutils
-      - rst2pdf
       - python-lxml
+      - libgtk-3-dev
  
 before_script:
   - export APP=Geany
@@ -24,27 +23,7 @@ before_script:
   - export APPDIR="$(pwd)/appdir" ; mkdir --parents ${APPDIR} ; find ${APPDIR}
 
 script:
-  #Compile:
-  - bash ./geany.compileApp.sh
-  - export VERSION=$(ls geany-*.tar.gz | sed -r 's/.*geany-(.*).tar.gz/\1/')
-  - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${APPDIR}/usr/lib/pkgconfig
-  - export C_INCLUDE_PATH=$C_INCLUDE_PATH:${APPDIR}/usr/include/geany:${APPDIR}/usr/include/geany/scintilla:${APPDIR}/usr/include/geany/tagmanager
-  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/lib:${APPDIR}/usr/local/lib
-  - bash ./geany.compilePlugins.sh
-  #Include geany-themes:
-  - pushd ${APPDIR}/usr/share/geany
-  - svn export https://github.com/geany/geany-themes.git/trunk/colorschemes --force
-  - popd
-  #Build AppImage:
-  - cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
-  - sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
-  - sed -i -e 's|Keywords|X-Keywords|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
-  - wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-  - chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-  - unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
-  #- export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
-  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/local/lib
-  - ./linuxdeployqt-continuous-x86_64.AppImage ${APPDIR}/usr/share/applications/*.desktop -appimage
+  - bash ./make_geany.sh
 
 after_success:
   - find ${APPDIR} -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
