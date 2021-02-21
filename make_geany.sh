@@ -23,10 +23,6 @@ alias ll="ls -al"
 #  find ${APPDIR}
 #fi
 
-#===============================================================================
-#=== travis.yml : script
-#===============================================================================
-
 #=== Get App source
 
 URL=$(wget --quiet "https://github.com/geany/geany/releases" -O - | grep -e "geany/archive.*\.tar\.gz" | head -n 1 | cut -d '"' -f 2)
@@ -80,15 +76,13 @@ popd
 #=== Build AppImage
 
 cp ${APPDIR}/usr/share/icons/hicolor/scalable/apps/geany.svg ${APPDIR}/ # Why is this needed?
-sed -i -e 's|Text;Editor|Text;Editor;|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
-sed -i -e 's|Keywords|X-Keywords|g' ${APPDIR}/usr/share/applications/geany.desktop # FIXME
-wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/local/lib
 
-#modprobe fuse
-./linuxdeployqt-continuous-x86_64.AppImage ${APPDIR}/usr/share/applications/*.desktop -appimage --appimage-extract-and-run
+wget -c "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" --output-document=linuxdeploy-plugin-gtk
+chmod a+x ./linuxdeploy-plugin-gtk
+wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+chmod a+x ./linuxdeploy-x86_64.AppImage
+./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir ${APPDIR} --output appimage --plugin gtk
+# --icon-file mypackage.png --desktop-file mypackage.desktop
 
 #===
 
