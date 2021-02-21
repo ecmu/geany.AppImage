@@ -1,6 +1,6 @@
 # geany use both C and C++, so advertize C++
 language: cpp
-dist: trusty
+dist: xenial
 sudo: required
 compiler:
   - gcc
