@@ -11,6 +11,8 @@ git:
 addons:
   apt:
     packages:
+      - patchelf
+      - librsvg2-dev
       - intltool
       - libtool
       - python-docutils
