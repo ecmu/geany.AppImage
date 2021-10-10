@@ -7,8 +7,22 @@ SCRIPTPATH=$(dirname $(readlink -f $0))
 SCRIPTPATH=${SCRIPTPATH%/}
 
 alias ll="ls -al"
+pushd ${SCRIPTPATH}
 
 #===============================================================================
+
+export APP=Geany
+export LOWERAPP=geany
+export APPDIR="${SCRIPTPATH}/appdir"
+
+mkdir --parents ${APPDIR}
+
+export VERSION=1.38.0
+
+#===============================================================================
+
+#TODO : gérer la version en paramètre
+
 #===============================================================================
 
 #RESET_APPDIR=1
@@ -25,16 +39,12 @@ alias ll="ls -al"
 
 #=== Get App source
 
-URL=$(wget --quiet "https://github.com/geany/geany/releases" -O - | grep -e "geany/archive.*\.tar\.gz" | head -n 1 | cut -d '"' -f 2)
-FILENAME=$(echo $URL | cut -d '/' -f 5)
-wget --continue "https://github.com${URL}" --output-document="geany-${FILENAME}"
-tar xf geany-*.tar.gz
-
-export VERSION=$(ls geany-*.tar.gz | sed -r 's/.*geany-(.*).tar.gz/\1/')
+wget --continue "https://github.com/geany/geany/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-${VERSION}.tar.gz"
+tar xf "geany-${VERSION}.tar.gz"
 
 #=== Compile main App
 
-pushd geany-*/
+pushd "geany-${VERSION}/"
 
 #Compile main app:
 ./autogen.sh --enable-binreloc --prefix=/usr
@@ -52,15 +62,11 @@ popd
 #=== Compile plugins
 
 #Get App source
-URL=$(wget --quiet "https://github.com/geany/geany-plugins/releases" -O - | grep -e "geany-plugins/archive.*\.tar\.gz" | head -n 1 | cut -d '"' -f 2)
-FILENAME=$(echo $URL | cut -d '/' -f 5)
-wget --continue "https://github.com${URL}" --output-document="geany-plugins-${FILENAME}"
-tar xf geany-plugins-*.tar.gz
+wget --continue "https://github.com/geany/geany-plugins/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-plugins-${VERSION}.tar.gz"
+tar xf geany-plugins-${VERSION}.tar.gz
 
 #Compile
-pushd geany-plugins-*/
-#NOCONFIGURE=1 ./autogen.sh --enable-all-plugins
-#./autogen.sh --help
+pushd geany-plugins-${VERSION}/
 ./autogen.sh --prefix=/usr
 make -j$(nproc)
 make -j$(nproc) check
@@ -83,9 +89,10 @@ wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous
 chmod a+x ./linuxdeploy-x86_64.AppImage
 ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir ${APPDIR} --output appimage --plugin gtk
 # --icon-file mypackage.png --desktop-file mypackage.desktop
-
+	
 #===
 
 echo "AppImage generated = $(readlink -f $(ls Geany*.AppImage))"
 readlink -f $(ls Geany*.AppImage) >AppImageFullname.txt
-echo "SCRIPTPATH = ${SCRIPTPATH}/"
+
+popd
