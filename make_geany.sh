@@ -2,6 +2,9 @@
 set -x #echo on
 set -e #Exists on errors
 
+#TODO : get version from github tag
+export VERSION=1.38.0
+
 SCRIPTPATH=.
 SCRIPTPATH=$(dirname $(readlink -f $0))
 SCRIPTPATH=${SCRIPTPATH%/}
@@ -9,45 +12,50 @@ SCRIPTPATH=${SCRIPTPATH%/}
 alias ll="ls -al"
 pushd ${SCRIPTPATH}
 
-#===============================================================================
-
 export APP=Geany
 export LOWERAPP=geany
 export APPDIR="${SCRIPTPATH}/appdir"
 
 mkdir --parents ${APPDIR}
 
-export VERSION=1.38.0
+#=== AppDir
 
-#===============================================================================
-
-#TODO : gérer la version en paramètre
-
-#===============================================================================
-
-#RESET_APPDIR=1
-#if [ "$RESET_APPDIR" = "1" ]
-#then
-#  if [ -d ${APPDIR} ]
-#  then
-#    rm --recursive ${APPDIR}
-#  fi
-#  
-#  mkdir --parents ${APPDIR}
-#  find ${APPDIR}
-#fi
+RESET_APPDIR=1
+if [ "$RESET_APPDIR" = "1" ]
+then
+  if [ -d ${APPDIR} ]
+  then
+    rm --recursive ${APPDIR}
+  fi
+  
+  mkdir --parents ${APPDIR}
+  find ${APPDIR}
+fi
 
 #=== Get App source
 
-wget --continue "https://github.com/geany/geany/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-${VERSION}.tar.gz"
-tar xf "geany-${VERSION}.tar.gz"
+if [ ! -f "./geany-${VERSION}.tar.gz" ];
+then
+  wget --continue "https://github.com/geany/geany/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-${VERSION}.tar.gz"
+  rm --recursive "./geany-${VERSION}"
+fi
+
+if [ ! -d "./geany-${VERSION}" ];
+then
+  tar xf "./geany-${VERSION}.tar.gz"
+fi
+
+#Workaround to have active plugins saved with relative paths in conf file.
+# diff -u src/prefix.h latest/prefix.h >prefix.patch
+#Important note: "cd $AppDir/usr && ./bin/geany" must be done for this change to work.
+patch --input=./prefix.patch "./geany-${VERSION}/src/prefix.h"
 
 #=== Compile main App
 
 pushd "geany-${VERSION}/"
 
 #Compile main app:
-./autogen.sh --enable-binreloc --prefix=/usr
+./autogen.sh --prefix=/usr --enable-binreloc
 # --enable-gtk3=no   => not recognized anymore => building is with GTK3...
 make -j$(nproc)
 make -j$(nproc) check
@@ -62,8 +70,16 @@ popd
 #=== Compile plugins
 
 #Get App source
-wget --continue "https://github.com/geany/geany-plugins/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-plugins-${VERSION}.tar.gz"
-tar xf geany-plugins-${VERSION}.tar.gz
+
+if [ ! -f "./geany-plugins-${VERSION}.tar.gz" ];
+then
+  wget --continue "https://github.com/geany/geany-plugins/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-plugins-${VERSION}.tar.gz"
+fi
+
+if [ ! -d "./geany-plugins-${VERSION}" ];
+then
+  tar xf geany-plugins-${VERSION}.tar.gz
+fi
 
 #Compile
 pushd geany-plugins-${VERSION}/
@@ -87,9 +103,25 @@ wget -c "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/ma
 chmod a+x ./linuxdeploy-plugin-gtk
 wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
 chmod a+x ./linuxdeploy-x86_64.AppImage
-./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir ${APPDIR} --output appimage --plugin gtk
+
+#Prépare AppDir
+./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --plugin=gtk
+# --custom-apprun=${SCRIPTPATH}/AppRun
 # --icon-file mypackage.png --desktop-file mypackage.desktop
-	
+
+#Le convertit en AppImage
+if [ -d "${APPDIR}/apprun-hooks" ];
+then
+  rm --recursive ${APPDIR}/apprun-hooks
+fi
+if [ -f "${APPDIR}/AppRun.wrapped" ];
+then
+  rm ${APPDIR}/AppRun.wrapped
+fi
+
+cp ${SCRIPTPATH}/AppRun ${APPDIR}
+./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --output=appimage
+
 #===
 
 echo "AppImage generated = $(readlink -f $(ls Geany*.AppImage))"

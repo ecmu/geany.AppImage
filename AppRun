@@ -1,0 +1,60 @@
+#! /bin/bash
+# Copyright 2020 Alex Woroschilow (alex.woroschilow@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+set -ex
+
+#=== From linuxdeploy-plugin-gtk.sh
+
+gsettings get org.gnome.desktop.interface gtk-theme 2> /dev/null | grep -qi "dark" && GTK_THEME_VARIANT="dark" || GTK_THEME_VARIANT="light"
+APPIMAGE_GTK_THEME="${APPIMAGE_GTK_THEME:-"Adwaita:$GTK_THEME_VARIANT"}" # Allow user to override theme (discouraged)
+CACHEDIR="$(mktemp --tmpdir --directory .AppRun.XXXXXXXX)"
+
+export APPDIR="${APPDIR:-"$(dirname "$(realpath "$0")")"}" # Workaround to run extracted AppImage
+
+export GTK_DATA_PREFIX="$APPDIR"
+
+export GTK_THEME="$APPIMAGE_GTK_THEME" # Custom themes are broken
+export GDK_BACKEND=x11 # Crash with Wayland backend on Wayland
+export XDG_DATA_DIRS="$APPDIR/usr/share:/usr/share:$XDG_DATA_DIRS" # g_get_system_data_dirs() from GLib
+export GSETTINGS_SCHEMA_DIR="$APPDIR/usr/share/glib-2.0/schemas"
+
+export GTK_EXE_PREFIX="$APPDIR/usr"
+
+export GTK_PATH="$APPDIR/usr/lib/x86_64-linux-gnu/gtk-3.0"
+export GTK_IM_MODULE_DIR="$APPDIR/usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules"
+export GTK_IM_MODULE_FILE="$CACHEDIR/immodules.cache"
+sed "s|/usr/lib/x86_64-linux-gnu/gtk-3.0|$APPDIR/usr/lib/x86_64-linux-gnu/gtk-3.0|g" "$APPDIR/usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules.cache" > "$GTK_IM_MODULE_FILE"
+export GDK_PIXBUF_MODULEDIR="$APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders"
+export GDK_PIXBUF_MODULE_FILE="$CACHEDIR/loaders.cache"
+sed "s|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders|$APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders|g" "$APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache" > "$GDK_PIXBUF_MODULE_FILE"
+
+#=== Workaround to plugins setting in .conf file
+#		The .conf file is supposed to be into $HOME directory, maybe it should be searched into GTK standard dorectory...
+
+#sed -i 's#=.*#=/tmp/.mount_Geany-xxxxxx/usr/lib/geany#' $HOME/.config/geany/geany.conf
+
+#=== From an old Geany AppImage...
+
+PATH=${PATH}:${APPDIR}/usr/bin
+PATH=${PATH}:${APPDIR}/bin
+export PATH=${PATH}
+
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/lib
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/usr/lib
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/usr/lib/x86_64-linux-gnu
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/lib/x86_64-linux-gnu
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/usr/lib64
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/lib64
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+
+cd ${APPDIR}/usr
+exec ./bin/geany "$@"
