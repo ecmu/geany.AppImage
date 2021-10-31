@@ -37,7 +37,7 @@ fi
 if [ ! -f "./geany-${VERSION}.tar.gz" ];
 then
   wget --continue "https://github.com/geany/geany/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-${VERSION}.tar.gz"
-  rm --recursive "./geany-${VERSION}"
+  rm --recursive --force "./geany-${VERSION}"
 fi
 
 if [ ! -d "./geany-${VERSION}" ];
@@ -74,6 +74,7 @@ popd
 if [ ! -f "./geany-plugins-${VERSION}.tar.gz" ];
 then
   wget --continue "https://github.com/geany/geany-plugins/archive/refs/tags/${VERSION}.tar.gz" --output-document="geany-plugins-${VERSION}.tar.gz"
+  rm --recursive --force "./geany-plugins-${VERSION}"
 fi
 
 if [ ! -d "./geany-plugins-${VERSION}" ];
@@ -110,15 +111,8 @@ chmod a+x ./linuxdeploy-x86_64.AppImage
 # --icon-file mypackage.png --desktop-file mypackage.desktop
 
 #Le convertit en AppImage
-if [ -d "${APPDIR}/apprun-hooks" ];
-then
-  rm --recursive ${APPDIR}/apprun-hooks
-fi
-if [ -f "${APPDIR}/AppRun.wrapped" ];
-then
-  rm ${APPDIR}/AppRun.wrapped
-fi
-
+rm --recursive --force ${APPDIR}/apprun-hooks
+rm --force ${APPDIR}/AppRun.wrapped
 cp ${SCRIPTPATH}/AppRun ${APPDIR}
 ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --output=appimage
 
