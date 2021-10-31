@@ -1,8 +1,7 @@
-#https://dev.to/tyu1996/automate-stuffs-with-github-actions-on-publishing-appimage-4pl1
 name: AppImage Build
 on:
   release:
-    types: [published, unpublished, created, edited, deleted, prereleased]
+    types: [created, edited]
   workflow_dispatch:
     inputs:
       tag:
@@ -10,14 +9,6 @@ on:
         required: true
 
 jobs:
-  say_hello:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "input tag = ${{ github.event.inputs.tag }}"
-          echo "current tag = ${{ github.ref }} => $GITHUB_REF"
-
-  # This workflow contains a single job called "build"
   build:
     #ubuntu bionic:
     runs-on: ubuntu-18.04
@@ -29,7 +20,6 @@ jobs:
     # Runs a single command using the runners shell
     - name: Install required dependencies
       run: sudo apt-get install --yes wget subversion patchelf librsvg2-dev intltool libtool python-docutils python-lxml libgtk-3-dev
-      #install desktop-file-utils zsync
   
     # Runs a set of commands using the runners shell
     - name: Executing AppImage build
@@ -41,6 +31,5 @@ jobs:
         allowUpdates: True
         tag: ${{ github.event.inputs.tag }}
         name: "Release build (${{ github.event.inputs.tag }})"
-        #prerelease: True
-        artifacts: "*.AppImage"
+        artifacts: "Geany*.AppImage"
         token: ${{ secrets.GITHUB_TOKEN }}
