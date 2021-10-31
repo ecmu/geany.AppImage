@@ -2,7 +2,7 @@
 name: AppImage Build
 on:
   release:
-    types: [created, edited]
+    types: [published, unpublished, created, edited, deleted, prereleased]
   workflow_dispatch:
     inputs:
       tag:
