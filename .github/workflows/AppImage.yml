@@ -17,32 +17,29 @@ jobs:
           echo "input tag = ${{ github.event.inputs.tag }}"
           echo "current tag = ${{ github.ref }} => $GITHUB_REF"
 
-  ## This workflow contains a single job called "build"
-  #build:
-  #  #ubuntu bionic:
-  #  runs-on: ubuntu-18.04
-  #
-  #  steps:
-  #  # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-  #  - uses: actions/checkout@master
-  #
-  #  # Runs a single command using the runners shell
-  #  - name: Install required dependencies
-  #    run: sudo apt-get install desktop-file-utils zsync
-  #
-  #  # Runs a set of commands using the runners shell
-  #  - name: Download building tools & executing AppImage build
-  #    run: |
-  #      wget -nv -c https://github.com/AppImage/pkg2appimage/releases/download/continuous/pkg2appimage-continuous-x86_64.AppImage
-  #      wget -nv -c https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-  #      ./build.sh
-  #
-  #  - name: Create Release
-  #    uses: ncipollo/release-action@v1
-  #    with:
-  #      allowUpdates: True
-  #      tag: continuous
-  #      name: Continuous build
-  #      prerelease: True
-  #      artifacts: "out/*"
-  #      token: ${{ secrets.GITHUB_TOKEN }}
+  # This workflow contains a single job called "build"
+  build:
+    #ubuntu bionic:
+    runs-on: ubuntu-18.04
+  
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@master
+  
+    # Runs a single command using the runners shell
+    - name: Install required dependencies
+      run: sudo apt-get install desktop-file-utils zsync
+  
+    # Runs a set of commands using the runners shell
+    - name: Executing AppImage build
+      run: bash ./make_geany.sh
+  
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        allowUpdates: True
+        tag: ${{ github.event.inputs.tag }}
+        name: "Release build (${{ github.event.inputs.tag }})"
+        #prerelease: True
+        artifacts: "*.AppImage"
+        token: ${{ secrets.GITHUB_TOKEN }}
