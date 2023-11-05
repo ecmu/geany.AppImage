@@ -16,7 +16,7 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@master
 
-    - name: Install required dependencies (sa Dockerfile)
+    - name: Install required dependencies (as Dockerfile)
       run: sudo apt-get install --yes locales wget build-essential
 
     - name: Executing AppImage build
