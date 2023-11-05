@@ -1,18 +1,14 @@
 #https://hub.docker.com/_/ubuntu/
-FROM ubuntu:bionic
+FROM ubuntu:20.04
 
-#=== Install required packages for building App (= "addons:apt:packages:" section from .travis.xml):
+#=== Install required packages for building App :
 
-RUN apt update
-RUN apt install --yes apt-utils 
+RUN apt-get update \
+&& apt-get install --yes apt-utils \
+&& DEBIAN_FRONTEND=noninteractive apt-get install --yes sudo locales wget build-essential \
+&& useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
-#Note:
-#	- wget subversion => for getting sources.
-# - patchelf				=> for linuxdeploy-plugin-gtk
-# - librsvg2-dev		=> for bundling GTK3 (linuxdeploy-plugin-gtk)
-# - <others>				=> for app building
-RUN apt install --yes wget subversion patchelf librsvg2-dev intltool libtool python-docutils python-lxml libgtk-3-dev
-
-#=== Lance la compilation dans le container :
-#COPY ./make_geany.sh /
-#ENTRYPOINT ["/bin/bash", "/make_geany.sh"]
+#For convenience, allow fake user to use sudo without password.
+RUN echo "docker ALL = NOPASSWD:ALL" >/etc/sudoers.d/docker
+#Always log in with this fake user
+USER docker
