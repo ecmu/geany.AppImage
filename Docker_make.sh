@@ -1,17 +1,34 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
+#set -x #echo on
+#set -e #Exists on errors
 
-DOCKER_IMAGE_NAME=geany
+#usage: 
+#DOCKER_RESET=1 bash ./Docker_make.sh
+#		=> make restarting new image
 
-#===
+DKR_IMG_NAME=geany
 
-SCRIPTPATH=.
-SCRIPTPATH=$(dirname $(readlink -f $0))
-#SCRIPTPATH=${SCRIPTPATH%/}
+SCRIPTPATH=$(cd $(dirname "$BASH_SOURCE") && pwd)
+pushd "$SCRIPTPATH"
 
-#Build image after deleting existing container and image
-#docker rm ${DOCKER_IMAGE_NAME}
-#docker image rm ${DOCKER_IMAGE_NAME}
-#docker build -t ${DOCKER_IMAGE_NAME} .
+echo "DOCKER_RESET = $DOCKER_RESET"
+if [ "$DOCKER_RESET" == "1" ] || [ "$(docker image ls ${DKR_IMG_NAME} | grep ${DKR_IMG_NAME})" == "" ]
+then
+  echo "Deleting existing container '${DKR_IMG_NAME}'..."
+  docker stop ${DKR_IMG_NAME}
+  docker rm ${DKR_IMG_NAME}
 
-#Run "geany" image giving also name "geany" for container:
-docker run --volume ${SCRIPTPATH}:/geany ${DOCKER_IMAGE_NAME} /bin/bash /geany/make_geany.sh
+  echo "Deleting existing image '${DKR_IMG_NAME}'..."
+  docker image rm ${DKR_IMG_NAME}
+  
+  echo "Building image '${DKR_IMG_NAME}'..."
+  docker build --tag ${DKR_IMG_NAME} .
+
+  echo "Running '${DKR_IMG_NAME}' image into '${DKR_IMG_NAME}' container..."
+  docker run --interactive --tty --volume ${SCRIPTPATH}:/${DKR_IMG_NAME} --name ${DKR_IMG_NAME} ${DKR_IMG_NAME} /usr/bin/bash /${DKR_IMG_NAME}/make_appimage.sh
+else
+  echo "Running existing ${DKR_IMG_NAME} container..."
+  docker start --attach ${DKR_IMG_NAME}
+fi
+
+popd
