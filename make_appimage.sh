@@ -10,10 +10,11 @@ export APP=Geany
 export LOWERAPP=${APP,,}
 export APPDIR="${SCRIPTPATH}/appdir"
 
-#=== Dependencies versions
+#region === Dependencies versions
 
 JQ_VERSION=1.8.1
 
+#endregion
 #region === Define App version to build
 
 #Workaround for build outside github: "env" file should then contain exports of github variables.
@@ -51,7 +52,16 @@ export VERSION_SHORT=${VERSION%.*}
 #	- subversion 			  => for geany-themes
 # - patchelf				  => for linuxdeploy-plugin-gtk
 # - librsvg2-dev		  => for bundling GTK3 (linuxdeploy-plugin-gtk)
-sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes appstream subversion patchelf librsvg2-dev intltool
+BuildPackages="appstream subversion patchelf librsvg2-dev intltool"
+
+echo ""
+echo "=== Package installations for building: $BuildPackages"
+echo ""
+
+sudo apt update
+sudo apt install --fix-broken
+sudo apt install --yes $BuildPackages
+#DEBIAN_FRONTEND=noninteractive 
 
 #endregion
 #region === AppDir
@@ -117,10 +127,8 @@ if [ "$BUILD_IGN_MAIN" = "yes" ]; then
 else
   #Modèle à utiliser pour cette partie si problème = https://github.com/geany/geany/blob/master/.github/workflows/build.yml
 
-  pushd "./${LOWERAPP}-${VERSION_SHORT}/"
-
   #Step: linux - Install dependencies
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
+  sudo apt install --assume-yes --no-install-recommends \
             ccache \
             gettext autopoint \
             libtool \
@@ -129,6 +137,8 @@ else
             python3-docutils \
             python3-lxml \
             rst2pdf
+
+  pushd "./${LOWERAPP}-${VERSION_SHORT}/"
 
   ./configure --prefix=/usr --enable-binreloc
   make -j$(nproc)
