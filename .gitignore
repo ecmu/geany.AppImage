@@ -1,0 +1,7 @@
+env
+*.tar.gz
+*.AppImage
+appdir/
+geany-*/
+linuxdeploy*
+jq*

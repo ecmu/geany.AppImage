@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x #echo on
+#set -x #echo on
 set -e #Exists on errors
 
 SCRIPTPATH=$(cd $(dirname "$BASH_SOURCE") && pwd)
@@ -12,11 +12,22 @@ export APPDIR="${SCRIPTPATH}/appdir"
 
 #=== Dependencies versions
 
-JQ_VERSION=1.7
+JQ_VERSION=1.8.1
 
-#=== Define App version to build
+#region === Define App version to build
 
 #Workaround for build outside github: "env" file should then contain exports of github variables.
+#Example for "env" file :
+#  #!/usr/bin/env bash
+#  #set -x #echo on
+#  #set -e #Exists on errors
+#
+#  export GITHUB_REF_NAME=2.1.0
+#  echo GITHUB_REF_NAME=$GITHUB_REF_NAME
+#
+#  #export BUILD_IGN_MAIN=yes
+#  #export BUILD_IGN_PLUGIN=yes
+#  #export BUILD_IGN_APPIMAGE=yes
 if [ -f "./env" ];
 then
   source ./env
@@ -24,7 +35,7 @@ fi
 
 if [ "$GITHUB_REF_NAME" = "" ];
 then
-	echo "Please define tag for this release (GITHUB_REF_NAME)"
+	echo "Please define/export tag for this release (GITHUB_REF_NAME). Maybe in './.env' file."
 	exit 1
 fi
 
@@ -32,26 +43,30 @@ fi
 export VERSION=$(echo $GITHUB_REF_NAME | cut -d'-' -f1)
 export VERSION_SHORT=${VERSION%.*}
 
-#=== Package installations for building
+#endregion
+#region === Package installations for building
 
 #Notes:
-# - appstream 			=> used by AppImageTool
-#	- subversion 			=> for geany-themes
-# - patchelf				=> for linuxdeploy-plugin-gtk
-# - librsvg2-dev		=> for bundling GTK3 (linuxdeploy-plugin-gtk)
-# - <others>				=> for app building
+# - appstream 			  => used by AppImageTool
+#	- subversion 			  => for geany-themes
+# - patchelf				  => for linuxdeploy-plugin-gtk
+# - librsvg2-dev		  => for bundling GTK3 (linuxdeploy-plugin-gtk)
+sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes appstream subversion patchelf librsvg2-dev intltool
 
-sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes appstream subversion patchelf librsvg2-dev \
-intltool libtool python-docutils python-lxml libgtk-3-dev
-
-#=== AppDir
+#endregion
+#region === AppDir
 
 if [ ! -d "${APPDIR}/usr" ];
 then
   mkdir --parents "${APPDIR}/usr"
 fi
 
-#=== Add JQ (JSON parser)
+export PKG_CONFIG_PATH=${PKG_CONFIG_PATH:+$PKG_CONFIG_PATH:}${APPDIR}/usr/lib/pkgconfig
+export C_INCLUDE_PATH=${C_INCLUDE_PATH:+$C_INCLUDE_PATH:}${APPDIR}/usr/include/geany:${APPDIR}/usr/include/geany/scintilla:${APPDIR}/usr/include/geany/tagmanager
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${APPDIR}/usr/lib:${APPDIR}/usr/local/lib
+
+#endregion
+#region === Add JQ (JSON parser)
 
 JQ_BIN=${SCRIPTPATH}/jq-linux64
 
@@ -61,12 +76,24 @@ then
   chmod +x "${JQ_BIN}"
 fi
 
-#=== Get App source
+#endregion
+#region === Get and build main App sources
+
+echo ""
+echo "=== Get and build main App sources (BUILD_IGN_MAIN = $BUILD_IGN_MAIN)"
+echo ""
 
 if [ ! -f "./${LOWERAPP}-${VERSION}.tar.gz" ];
 then
 	JSON=$(wget -q -O - https://api.github.com/repos/geany/geany/releases)
-	URL=$(echo $JSON | ./jq-linux64 '.[] | select(.tag_name == env.VERSION) | .assets[] | select(.content_type == "application/gzip") | .browser_download_url')
+	URL=$(echo $JSON | $JQ_BIN '.[] | select(.tag_name == env.VERSION) | .assets[] | select(.content_type == "application/gzip") | .browser_download_url')
+  if [ "$URL" = "" ];
+  then
+    echo "$APP sources not found for $VERSION in https://api.github.com/repos/geany/geany/releases"
+    echo "Here are the 5 latest available versions:"
+    echo $JSON | $JQ_BIN '.[:5] | .[] | { version: .tag_name }'
+    exit 1
+  fi
   wget --continue $(echo $URL | tr -d "'" | tr -d '"') --output-document="${LOWERAPP}-${VERSION}.tar.gz"
   rm --recursive --force "./${LOWERAPP}-${VERSION_SHORT}"
 fi
@@ -74,70 +101,192 @@ fi
 if [ ! -d "./${LOWERAPP}-${VERSION_SHORT}" ];
 then
   tar --extract --file="./${LOWERAPP}-${VERSION}.tar.gz"
+
+  #Apply changes (good use of BinReloc)
+  #Note : diff -ruN --label=src --label=src  OldDir/geany-2.1/src/ NewDir/geany-2.1/src/ >./geany-src.diff
+  # => chaque "label" doit remplacer les noms complets des répertoires comparés. Réponse de Claude pas testée, donc à vérifier.
+  pushd "./${LOWERAPP}-${VERSION_SHORT}"
+  patch -p0 < "$SCRIPTPATH/geany-src.diff"
+  popd
 fi
 
-#=== Compile main App
+if [ "$BUILD_IGN_MAIN" = "yes" ]; then
+  echo ""
+  echo "WARNING: $APP build is ignored by BUILD_IGN_MAIN"
+  echo ""
+else
+  #Modèle à utiliser pour cette partie si problème = https://github.com/geany/geany/blob/master/.github/workflows/build.yml
 
-pushd "./${LOWERAPP}-${VERSION_SHORT}/"
+  pushd "./${LOWERAPP}-${VERSION_SHORT}/"
 
-./configure --prefix=/usr --enable-binreloc
-make -j$(nproc)
-#make -j$(nproc) check
-make install DESTDIR=${APPDIR}
+  #Step: linux - Install dependencies
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
+            ccache \
+            gettext autopoint \
+            libtool \
+            libgtk-3-dev \
+            doxygen \
+            python3-docutils \
+            python3-lxml \
+            rst2pdf
 
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${APPDIR}/usr/lib/pkgconfig
-export C_INCLUDE_PATH=$C_INCLUDE_PATH:${APPDIR}/usr/include/geany:${APPDIR}/usr/include/geany/scintilla:${APPDIR}/usr/include/geany/tagmanager
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${APPDIR}/usr/lib:${APPDIR}/usr/local/lib
+  ./configure --prefix=/usr --enable-binreloc
+  make -j$(nproc)
+  #make -j$(nproc) check
+  make install DESTDIR=${APPDIR}
 
-popd
+  popd
+fi
 
-#=== Get and Compile plugins
+#endregion
+#region === Get and build plugins
 
-if [ ! -f "./${LOWERAPP}-plugins-${VERSION}.tar.gz" ];
-then
+echo ""
+echo "=== Get and build plugins (BUILD_IGN_PLUGIN = $BUILD_IGN_PLUGIN)"
+echo ""
+
+if [ ! -f "./${LOWERAPP}-plugins-${VERSION}.tar.gz" ]; then
 	JSON=$(wget -q -O - https://api.github.com/repos/geany/geany-plugins/releases)
-	URL=$(echo $JSON | ./jq-linux64 '.[] | select(.tag_name == env.VERSION) | .assets[] | select(.content_type == "application/gzip") | .browser_download_url')
+	URL=$(echo $JSON | $JQ_BIN '.[] | select(.tag_name == env.VERSION) | .tarball_url')
+  if [ "$URL" = "" ];
+  then
+    echo "$APP plugin sources not found for $VERSION in https://api.github.com/repos/geany/geany-plugins/releases"
+    echo "Here are the 5 latest available versions:"
+    echo $JSON | $JQ_BIN '.[:5] | .[] | { version: .tag_name }'
+    exit 1
+  fi
   wget --continue $(echo $URL | tr -d "'" | tr -d '"') --output-document="${LOWERAPP}-plugins-${VERSION}.tar.gz"
   rm --recursive --force "./${LOWERAPP}-plugins-${VERSION}"
 fi
 
-if [ ! -d "./${LOWERAPP}-plugins-${VERSION_SHORT}" ];
-then
-  tar --extract --file="./${LOWERAPP}-plugins-${VERSION}.tar.gz"
+if [ ! -d "./${LOWERAPP}-plugins-${VERSION_SHORT}" ]; then
+  mkdir --parent "./${LOWERAPP}-plugins-${VERSION_SHORT}"
+  tar --extract --file="./${LOWERAPP}-plugins-${VERSION}.tar.gz" --directory="./${LOWERAPP}-plugins-${VERSION_SHORT}" --strip-components=1
 fi
 
-#Compile
-pushd ./${LOWERAPP}-plugins-${VERSION_SHORT}/
-./configure --prefix=/usr --enable-binreloc
-make -j$(nproc)
-#make -j$(nproc) check
-make install DESTDIR=${APPDIR}
-popd
+if [ "$BUILD_IGN_PLUGIN" = "yes" ]; then
+  echo ""
+  echo "WARNING: $APP plugin build is ignored by BUILD_IGN_PLUGIN"
+  echo ""
+else
+  # Modèle pour cette partie = https://github.com/geany/geany-plugins/blob/master/.github/workflows/build.yml
 
-#=== Include geany-themes
+  pushd ./${LOWERAPP}-plugins-${VERSION_SHORT}/
 
-pushd ${APPDIR}/usr/share/geany
-svn export https://github.com/geany/geany-themes.git/trunk/colorschemes --force
-popd
+  #Step: env
+  export CONFIGURE_FLAGS="--prefix=/usr --disable-silent-rules"
 
-#=== Build AppImage
+  #Step: linux - Install Dependencies
+  cat << EOF > /tmp/geany-plugins-dependencies
+    # general
+    ccache
+    libtool
+    libgtk-3-dev
+    # geany
+    autopoint
+    gettext
+    python3-docutils
+    # geany-plugins
+    check
+    # debugger
+    libvte-2.91-dev
+    # geanygendoc
+    libctpl-dev
+    # geanylua
+    liblua5.1-0-dev
+    # geanypg
+    libgpgme-dev
+    # geanyvc
+    libgtkspell-dev
+    libgtkspell3-3-dev
+    # geaniuspaste/updatechecker
+    libsoup2.4-dev
+    libsoup-3.0-dev
+    # git-changebar
+    libgit2-dev
+    # markdown
+    libmarkdown2-dev
+    # markdown/webhelper
+    libwebkit2gtk-4.0-dev
+    libwebkit2gtk-4.1-dev
+    # pretty-printer
+    libxml2-dev
+    # spellcheck
+    libenchant-2-dev
+    # cppcheck
+    cmake
+    libpcre3-dev
+EOF
+  grep -v '^[ ]*#' /tmp/geany-plugins-dependencies | xargs sudo apt-get install --assume-yes --no-install-recommends
 
-wget -c "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" --output-document=linuxdeploy-plugin-gtk
-chmod a+x ./linuxdeploy-plugin-gtk
-wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-chmod a+x ./linuxdeploy-x86_64.AppImage
+  #Step: linux - Configure
+  if [ -f "./configure" ]; then
+    ./configure $CONFIGURE_FLAGS
+  elif [ -f "./autogen.sh" ]; then
+    # Add previously built cppcheck to $PATH, for this and for succeeding steps
+    #export "PATH=$PATH:${{ env.CPPCHECK_CACHE_PATH }}/build/bin"
 
-#Prepare AppDir
-./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --plugin=gtk
+    NOCONFIGURE=1 ./autogen.sh
+    mkdir ./_build
+    pushd ./_build
+    { ../configure $CONFIGURE_FLAGS --enable-all-plugins || { cat config.log; exit 1; } ; }
+    popd
+  else
+    echo "ERROR: No compilation instruction found for Plugins (missing configure AND autogen.sh)"
+    exit 1
+  fi
 
-#Export to AppImage
-rm --recursive --force ${APPDIR}/apprun-hooks
-rm --force ${APPDIR}/AppRun.wrapped
-cp ${SCRIPTPATH}/AppRun ${APPDIR}
-./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --output=appimage
+  #Step: linux - Build
+  pushd ./_build
+  make -j$(nproc)
+  make -j$(nproc) install DESTDIR=${APPDIR}
+  popd
+  
+  popd
+fi
 
-#===
+#endregion
+#region === Include geany-themes
 
-echo "AppImage generated = $(readlink -f $(ls Geany*.AppImage))"
+#pushd ${APPDIR}/usr/share/geany
+#svn export https://github.com/geany/geany-themes.git/trunk/colorschemes --force
+#popd
+
+#endregion
+#region === Build AppImage
+
+echo ""
+echo "=== Build AppImage (BUILD_IGN_APPIMAGE = $BUILD_IGN_APPIMAGE)"
+echo ""
+
+if [ "$BUILD_IGN_APPIMAGE" = "yes" ]; then
+  echo ""
+  echo "WARNING: AppImage build is ignored by BUILD_IGN_APPIMAGE"
+  echo ""
+else
+  if [ ! -f "./linuxdeploy-plugin-gtk" ]; then
+    wget -c "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" --output-document=linuxdeploy-plugin-gtk
+    chmod a+x ./linuxdeploy-plugin-gtk
+  fi
+  if [ ! -f "./linuxdeploy-x86_64.AppImage" ]; then
+    wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+    chmod a+x ./linuxdeploy-x86_64.AppImage
+  fi
+
+  #Prepare AppDir
+  ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --plugin=gtk
+
+  #Export to AppImage
+  rm --recursive --force ${APPDIR}/apprun-hooks
+  rm --force ${APPDIR}/AppRun.wrapped
+  cp ${SCRIPTPATH}/AppRun ${APPDIR}
+  ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --output=appimage
+
+  echo ""
+  echo "AppImage generated = $(readlink -f $(ls Geany*.AppImage))"
+  echo ""
+fi
+
+#endregion
 
 popd

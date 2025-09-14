@@ -1,0 +1,57 @@
+--- src/libmain.c	2025-07-04 11:31:37.000000000 +0200
++++ src/libmain.c	2025-09-09 13:29:29.185339024 +0200
+@@ -1466,3 +1466,9 @@
+ 
+ 	ui_set_statusbar(TRUE, _("Configuration files reloaded."));
+ }
++
++#ifdef ENABLE_BINRELOC
++
++void* _geany_reloc_anchor = main_lib;
++
++#endif 
+--- src/prefix.h	2025-07-04 11:31:37.000000000 +0200
++++ src/prefix.h	2025-09-09 13:24:08.870070196 +0200
+@@ -28,6 +28,7 @@
+ 
+ G_BEGIN_DECLS
+ 
++extern void* _geany_reloc_anchor;
+ 
+ /* WARNING, BEFORE YOU MODIFY PREFIX.C:
+  *
+@@ -71,20 +71,20 @@
+ 	#undef GEANY_DOCDIR
+ 	#undef GEANY_LOCALEDIR
+ 
+-	#define SELFPATH	(br_thread_local_store (br_locate ((void *) "")))
+-	#define PREFIXDIR	(br_thread_local_store (br_locate_prefix ((void *) "")))
+-	#define BINDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/bin")))
+-	#define SBINDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/sbin")))
+-	#define LIBEXECDIR	(br_thread_local_store (br_prepend_prefix ((void *) "", "/libexec")))
+-	#define ETCDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/etc")))
+-	#define SYSCONFDIR	(br_thread_local_store (br_prepend_prefix ((void *) "", "/etc")))
+-	#define CONFDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/etc")))
+-	#define GEANY_PREFIX		(br_thread_local_store (br_locate_prefix ((void *) "")))
+-	#define GEANY_DATADIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/share")))
+-	#define GEANY_LIBDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/lib")))
+-	#define GEANY_LIBEXECDIR	(br_thread_local_store (br_prepend_prefix ((void *) "", "/libexec/geany")))
+-	#define GEANY_DOCDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/share/doc/geany")))
+-	#define GEANY_LOCALEDIR		(br_thread_local_store (br_prepend_prefix ((void *) "", "/share/locale")))
++	#define SELFPATH	(br_thread_local_store (br_locate (_geany_reloc_anchor)))
++	#define PREFIXDIR	(br_thread_local_store (br_locate_prefix (_geany_reloc_anchor)))
++	#define BINDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/bin")))
++	#define SBINDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/sbin")))
++	#define LIBEXECDIR	(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/libexec")))
++	#define ETCDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/etc")))
++	#define SYSCONFDIR	(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/etc")))
++	#define CONFDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/etc")))
++	#define GEANY_PREFIX		(br_thread_local_store (br_locate_prefix (_geany_reloc_anchor)))
++	#define GEANY_DATADIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/share")))
++	#define GEANY_LIBDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/lib")))
++	#define GEANY_LIBEXECDIR	(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/libexec/geany")))
++	#define GEANY_DOCDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/share/doc/geany")))
++	#define GEANY_LOCALEDIR		(br_thread_local_store (br_prepend_prefix (_geany_reloc_anchor, "/share/locale")))
+ #endif /* BR_NO_MACROS */
+ 
+ 

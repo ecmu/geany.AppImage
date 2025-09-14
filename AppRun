@@ -37,19 +37,20 @@ export GDK_PIXBUF_MODULEDIR="$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders"
 export GDK_PIXBUF_MODULE_FILE="$CACHEDIR/loaders.cache"
 sed "s|/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders|$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders|g" "$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" > "$GDK_PIXBUF_MODULE_FILE"
 
-#=== Workaround to plugins setting in .conf file
-#		The .conf file is supposed to be into $HOME directory, maybe it should be searched into GTK standard dorectory...
+#=== Specific to Geany there
 
-#sed -i 's#=.*#=/tmp/.mount_Geany-xxxxxx/usr/lib/geany#' $HOME/.config/geany/geany.conf
+export PATH=${PATH}:${APPDIR}/usr/bin:${APPDIR}/bin
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/usr/lib
 
-#=== From an old Geany AppImage...
+export GEANY_PLUGINS_PATH="${APPDIR}/usr/lib/geany/:${APPDIR}/usr/local/lib/geany/"
 
-PATH=${PATH}:${APPDIR}/usr/bin
-PATH=${PATH}:${APPDIR}/bin
-export PATH=${PATH}
+GEANY_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/geany"
 
-LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${APPDIR}/usr/lib
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+#Workaround for BinReloc mode: Update session.conf for active plugins defined in previous AppImage execution
+#Note: since Geany 2.0, it is not anymore in config.conf
+if [ -f "$GEANY_CONFIG_DIR/session.conf" ]; then
+  sed -i "s|/tmp/.mount_Geany-[^/]*/|$APPDIR/|g" "$GEANY_CONFIG_DIR/session.conf"
+fi
 
-cd ${APPDIR}/usr/share/geany
+#shouldn't be necessary in BinReloc mode: cd ${APPDIR}/usr/share/geany
 exec ${APPDIR}/usr/bin/geany "$@"

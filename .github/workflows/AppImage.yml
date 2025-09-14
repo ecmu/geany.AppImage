@@ -10,16 +10,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
   
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@master
+    - name: Check-out source repository under $GITHUB_WORKSPACE, so your job can access it
+      uses: actions/checkout@master
 
     - name: Install required dependencies (as Dockerfile)
-      run: sudo apt-get install --yes locales wget build-essential
+      run: sudo apt-get install --yes apt-utils locales wget build-essential
 
-    - name: Executing AppImage build
+    - name: Build application and AppImage
       run: bash ./make_appimage.sh
   
     - name: Create Release
