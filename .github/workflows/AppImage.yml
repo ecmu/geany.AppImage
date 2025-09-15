@@ -11,17 +11,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-  
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-24.04
     steps:
     - name: Check-out source repository under $GITHUB_WORKSPACE, so your job can access it
       uses: actions/checkout@master
 
-    - name: Install required dependencies (as Dockerfile)
-      run: sudo apt-get install --yes apt-utils locales wget build-essential
-
     - name: Build application and AppImage
-      run: bash ./make_appimage.sh
-  
+      run: |
+        export HOSTUID=$(id -u) HOSTGID=$(id -g)
+        docker-compose run --rm build
+
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:

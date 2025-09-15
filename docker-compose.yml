@@ -1,0 +1,12 @@
+services:
+  build:
+    environment:
+      HOSTUID: ${HOSTUID}
+      HOSTGID: ${HOSTGID}
+      VERSION: ${VERSION}
+      GITHUB_REF_NAME: ${GITHUB_REF_NAME}
+    image: ${REGISTRY_IMAGE}:${TAG}
+    volumes:
+      - $PWD:$WORKSPACE
+    working_dir: $WORKSPACE
+    command: $SCRIPT
