@@ -7,22 +7,30 @@ on:
       tag:
         description: 'Release tag'
         required: true
+  pull_request:
+    branches: master
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-  
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-24.04
     steps:
     - name: Check-out source repository under $GITHUB_WORKSPACE, so your job can access it
       uses: actions/checkout@master
 
-    - name: Install required dependencies (as Dockerfile)
-      run: sudo apt-get install --yes apt-utils locales wget build-essential
-
     - name: Build application and AppImage
-      run: bash ./make_appimage.sh
-  
-    - name: Create Release
+      run: |
+        export HOSTUID=$(id -u) HOSTGID=$(id -g)
+        docker-compose run --rm build
+        ARCH=$(uname -m)
+        echo "ARTIFACT_NAME=AppImage-${ARCH//\//-}" >> $GITHUB_ENV
+
+    - if: ${{ github.ref == 'refs/heads/master' }}
+      name: Create Release
       uses: ncipollo/release-action@v1
       with:
         allowUpdates: True
@@ -30,3 +38,11 @@ jobs:
         name: "Release build (${{ github.event.inputs.tag }})"
         artifacts: "Geany*.AppImage"
         token: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: ${{ github.ref != 'refs/heads/master' }}
+      name: Upload AppImage
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: "Geany*.AppImage"
+        if-no-files-found: error
