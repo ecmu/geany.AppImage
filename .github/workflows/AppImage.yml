@@ -7,6 +7,8 @@ on:
       tag:
         description: 'Release tag'
         required: true
+  pull_request:
+    branches: master
 
 jobs:
   build:
@@ -24,8 +26,11 @@ jobs:
       run: |
         export HOSTUID=$(id -u) HOSTGID=$(id -g)
         docker-compose run --rm build
+        ARCH=$(uname -m)
+        echo "ARTIFACT_NAME=AppImage-${ARCH//\//-}" >> $GITHUB_ENV
 
-    - name: Create Release
+    - if: ${{ github.ref == 'refs/heads/master' }}
+      name: Create Release
       uses: ncipollo/release-action@v1
       with:
         allowUpdates: True
@@ -33,3 +38,11 @@ jobs:
         name: "Release build (${{ github.event.inputs.tag }})"
         artifacts: "Geany*.AppImage"
         token: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: ${{ github.ref != 'refs/heads/master' }}
+      name: Upload AppImage
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: "Geany*.AppImage"
+        if-no-files-found: error
