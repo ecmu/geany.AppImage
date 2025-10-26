@@ -61,7 +61,11 @@ echo ""
 sudo apt update
 sudo apt install --fix-broken
 sudo apt install --yes $BuildPackages
-#DEBIAN_FRONTEND=noninteractive 
+
+# This normally would get installed later as a dependency. Just install
+# it here and use noninteractive mode to prevent prompts for entering
+# tz info
+sudo DEBIAN_FRONTEND=noninteractive apt install --yes tzdata
 
 #endregion
 #region === AppDir
@@ -78,11 +82,17 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${APPDIR}/usr/lib:${
 #endregion
 #region === Add JQ (JSON parser)
 
-JQ_BIN=${SCRIPTPATH}/jq-linux64
+if [ "$(uname -m)" = "x86_64" ]; then
+  MACH="amd64"
+else
+  MACH="arm64"
+fi
+
+JQ_BIN=${SCRIPTPATH}/jq-linux-${MACH}
 
 if [ ! -f "${JQ_BIN}" ];
 then
-  wget --continue "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux64"
+  wget --continue "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux-${MACH}"
   chmod +x "${JQ_BIN}"
 fi
 
@@ -130,9 +140,7 @@ else
   #Step: linux - Install dependencies
   sudo apt install --assume-yes --no-install-recommends \
             ccache \
-            gettext autopoint \
-            libtool \
-            libgtk-3-dev \
+            autopoint \
             doxygen \
             python3-docutils \
             python3-lxml \
@@ -188,13 +196,7 @@ else
 
   #Step: linux - Install Dependencies
   cat << EOF > /tmp/geany-plugins-dependencies
-    # general
-    ccache
-    libtool
-    libgtk-3-dev
     # geany
-    autopoint
-    gettext
     python3-docutils
     # geany-plugins
     check
@@ -224,7 +226,6 @@ else
     # spellcheck
     libenchant-2-dev
     # cppcheck
-    cmake
     libpcre3-dev
 EOF
   grep -v '^[ ]*#' /tmp/geany-plugins-dependencies | xargs sudo apt-get install --assume-yes --no-install-recommends
@@ -251,7 +252,7 @@ EOF
   make -j$(nproc)
   make -j$(nproc) install DESTDIR=${APPDIR}
   popd
-  
+
   popd
 fi
 
@@ -274,23 +275,14 @@ if [ "$BUILD_IGN_APPIMAGE" = "yes" ]; then
   echo "WARNING: AppImage build is ignored by BUILD_IGN_APPIMAGE"
   echo ""
 else
-  if [ ! -f "./linuxdeploy-plugin-gtk" ]; then
-    wget -c "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" --output-document=linuxdeploy-plugin-gtk
-    chmod a+x ./linuxdeploy-plugin-gtk
-  fi
-  if [ ! -f "./linuxdeploy-x86_64.AppImage" ]; then
-    wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-    chmod a+x ./linuxdeploy-x86_64.AppImage
-  fi
-
   #Prepare AppDir
-  ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --plugin=gtk
+  linuxdeploy --appdir=${APPDIR} --plugin=gtk
 
   #Export to AppImage
   rm --recursive --force ${APPDIR}/apprun-hooks
   rm --force ${APPDIR}/AppRun.wrapped
   cp ${SCRIPTPATH}/AppRun ${APPDIR}
-  ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir=${APPDIR} --output=appimage
+  linuxdeploy --appdir=${APPDIR} --output=appimage
 
   echo ""
   echo "AppImage generated = $(readlink -f $(ls Geany*.AppImage))"
